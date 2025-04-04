@@ -28,7 +28,7 @@ def main():
         # Lire le contenu du fichier JSON
         with open(args.json_file, 'r', encoding='utf-8') as f:
             json_data = json.load(f)
-        
+
         # Générer un message simple (mode fallback)
         message = "ANALYSE DE FALLBACK: Ce message a été généré car l'API Azure AI n'est pas disponible.\n\n"
         message += "Résumé:\n"

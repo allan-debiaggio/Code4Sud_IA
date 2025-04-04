@@ -60,7 +60,7 @@ h1 {
 }
 
 .highlight {
-    color: #00ffcc;
+    color: #1584c4;
     font-style: italic;
 }
 
@@ -77,7 +77,6 @@ h1 {
     .container {
         grid-template-columns: 1fr 1fr;
     }
-    
     .resources-panel {
         grid-column: 1 / -1;
     }
@@ -174,7 +173,7 @@ h1 {
 
 #drop-area.highlight {
     background-color: rgba(0, 255, 204, 0.15);
-    border-color: #00ffcc;
+    border-color: #1584c4;
 }
 
 #drop-area p {

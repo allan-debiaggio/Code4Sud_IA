@@ -8,7 +8,6 @@ const AzureAIConnector = require('./azureAI'); // Import du nouveau module
 const app = express();
 const port = 3000;
 
-// Initialisation du connecteur Azure AI (si les variables d'environnement sont définies)
 let azureAI = null;
 if (process.env.AZURE_AI_ENDPOINT && process.env.AZURE_AI_KEY) {
     azureAI = new AzureAIConnector({
@@ -21,10 +20,8 @@ if (process.env.AZURE_AI_ENDPOINT && process.env.AZURE_AI_KEY) {
     console.log('Variables Azure AI non définies, utilisation du traitement local par défaut');
 }
 
-// Servir les fichiers statiques
 app.use(express.static(path.join(__dirname)));
 
-// Configuration de multer pour le stockage des fichiers
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         const uploadDir = path.join(__dirname, 'uploads');
@@ -65,28 +62,27 @@ app.post('/process-json', upload.single('json_file'), async (req, res) => {
     }
 
     const jsonFilePath = req.file.path;
-    
+
     // Si Azure AI est configuré, utilisez-le pour l'analyse
     if (azureAI) {
         try {
             // Lire le contenu du fichier JSON
             const jsonContent = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
-            
+
             // Analyser directement via Azure AI Foundry
             const analysisResult = await azureAI.analyzeConversation(jsonContent);
-            
+
             if (analysisResult.success) {
                 // Sauvegarder le résultat dans un fichier
                 const outputFilePath = path.join(
                     path.dirname(jsonFilePath),
                     `output_${path.basename(jsonFilePath, '.json')}.txt`
                 );
-                
+
                 await azureAI.saveAnalysisResult(analysisResult.analysis, outputFilePath);
-                
-                // Nettoyer tous les fichiers JSON
+
                 cleanupJsonFiles();
-                
+
                 res.json({
                     success: true,
                     message: 'Analyse effectuée avec succès via Azure AI Foundry'
