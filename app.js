@@ -1,30 +1,23 @@
-ocument.addEventListener('DOMContentLoaded', () => {
-    // DOM Elements
+document.addEventListener('DOMContentLoaded', () => {
+
     const dropArea = document.getElementById('drop-area');
     const fileInput = document.getElementById('fileInput');
     const fileSelect = document.getElementById('fileSelect');
     const statusElement = document.getElementById('status');
 
-    // Prevent default drag behaviors
+    // Suppression du prompt personnalisé car l'agent Azure AI est déjà configuré
+
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropArea.addEventListener(eventName, preventDefaults, false);
         document.body.addEventListener(eventName, preventDefaults, false);
     });
-
-    // Highlight drop area when item is dragged over it
     ['dragenter', 'dragover'].forEach(eventName => {
         dropArea.addEventListener(eventName, highlight, false);
     });
-
-    // Remove highlight when item is dragged away
     ['dragleave', 'drop'].forEach(eventName => {
         dropArea.addEventListener(eventName, unhighlight, false);
     });
-
-    // Handle dropped files
     dropArea.addEventListener('drop', handleDrop, false);
-
-    // Handle file selection via the button
     fileSelect.addEventListener('click', () => {
         fileInput.click();
     });
@@ -58,43 +51,66 @@ ocument.addEventListener('DOMContentLoaded', () => {
     }
 
     function processFile(file) {
-        // Check if file is JSON
         if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
-            updateStatus('Error: Please upload a JSON file', 'error');
+            updateStatus('Erreur: Veuillez télécharger un fichier JSON', 'error');
             return;
         }
 
         const reader = new FileReader();
-        
         reader.onload = function(e) {
             try {
-                // Try to parse the JSON
                 const jsonData = JSON.parse(e.target.result);
-                
-                // Show success message
-                updateStatus('Success: JSON file loaded', 'success');
-                
-                // Log to console
-                console.log('FILE loaded');
-                
-                // You can do more with the JSON data here if needed
-                // console.log(jsonData);
+
+                updateStatus('Succès: Fichier JSON chargé', 'success');
+                // Envoyer le fichier JSON à notre agent Azure AI
+                sendJsonToAzureAgent(file);
+
             } catch (error) {
-                updateStatus('Error: Invalid JSON format', 'error');
-                console.error('Error parsing JSON:', error);
+                updateStatus('Erreur: Format JSON invalide', 'error');
+                console.error('Erreur d\'analyse JSON:', error);
             }
         };
-        
         reader.onerror = function() {
-            updateStatus('Error: Failed to read file', 'error');
-            console.error('Error reading file');
+            updateStatus('Erreur: Impossible de lire le fichier', 'error');
+            console.error('Erreur de lecture du fichier');
         };
-        
         reader.readAsText(file);
     }
 
     function updateStatus(message, type) {
         statusElement.textContent = message;
         statusElement.className = type;
+    }
+    
+    // Fonction pour envoyer le fichier JSON à l'agent Azure AI
+    async function sendJsonToAzureAgent(file) {
+        try {
+            updateStatus('Envoi du fichier à l\'agent pour analyse...', 'info');
+            
+            // Créer un FormData pour envoyer uniquement le fichier (sans prompt personnalisé)
+            const formData = new FormData();
+            formData.append('json_file', file);
+            
+            // Appel au serveur backend
+            const response = await fetch('/process-json', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Erreur serveur: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                updateStatus(`Traitement terminé avec succès - Analyse effectuée par l'agent Azure AI Foundry`, 'success');
+            } else {
+                updateStatus(`Erreur: ${result.error}`, 'error');
+            }
+        } catch (error) {
+            updateStatus(`Erreur lors du traitement: ${error.message}`, 'error');
+            console.error('Erreur:', error);
+        }
     }
 });

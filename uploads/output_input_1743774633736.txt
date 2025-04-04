@@ -1,0 +1,6 @@
+ANALYSE DE FALLBACK: Ce message a été généré car l'API Azure AI n'est pas disponible.
+
+Résumé:
+- Le fichier JSON a été reçu et analysé correctement
+- L'analyse complète n'est pas disponible - veuillez configurer l'API Azure AI
+- Date et heure de l'analyse: 2025-04-04 15:50:33
