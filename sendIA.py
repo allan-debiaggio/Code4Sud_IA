@@ -16,14 +16,14 @@ def main():
     parser.add_argument("json_file", help="Chemin vers le fichier JSON à analyser")
     parser.add_argument("--api-endpoint", help="Point de terminaison de l'API (optionnel)")
     parser.add_argument("--api-key", help="Clé d'API (optionnel)")
-    
+
     args = parser.parse_args()
-    
+
     # Vérifier que le fichier existe
     if not os.path.exists(args.json_file):
         print(f"Erreur: Le fichier {args.json_file} n'existe pas.")
         sys.exit(1)
-    
+
     try:
         # Lire le contenu du fichier JSON
         with open(args.json_file, 'r', encoding='utf-8') as f:

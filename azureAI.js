@@ -47,7 +47,7 @@ class AzureAIConnector {
             }
 
             const response = await axios.post(this.apiEndpoint, payload, { headers });
-            
+
             return {
                 success: true,
                 data: response.data,

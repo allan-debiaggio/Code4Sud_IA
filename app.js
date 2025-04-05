@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const jsonData = JSON.parse(e.target.result);
 
                 updateStatus('Succès: Fichier JSON chargé', 'success');
-                // Envoyer le fichier JSON à notre agent Azure AI
+                // Envoyer le fichier JSON à  agent Azure AI
                 sendJsonToAzureAgent(file);
 
             } catch (error) {
@@ -81,28 +81,25 @@ document.addEventListener('DOMContentLoaded', () => {
         statusElement.textContent = message;
         statusElement.className = type;
     }
-    
     // Fonction pour envoyer le fichier JSON à l'agent Azure AI
     async function sendJsonToAzureAgent(file) {
         try {
             updateStatus('Envoi du fichier à l\'agent pour analyse...', 'info');
-            
             // Créer un FormData pour envoyer uniquement le fichier (sans prompt personnalisé)
             const formData = new FormData();
             formData.append('json_file', file);
-            
             // Appel au serveur backend
             const response = await fetch('/process-json', {
                 method: 'POST',
                 body: formData
             });
-            
+
             if (!response.ok) {
                 throw new Error(`Erreur serveur: ${response.status}`);
             }
-            
+
             const result = await response.json();
-            
+
             if (result.success) {
                 updateStatus(`Traitement terminé avec succès - Analyse effectuée par l'agent Azure AI Foundry`, 'success');
             } else {

@@ -95,7 +95,6 @@ app.post('/process-json', upload.single('json_file'), async (req, res) => {
             }
         } catch (error) {
             console.error('Erreur lors du traitement avec Azure AI:', error);
-            
             // Fallback à la méthode Python
             processWithPython(req, res, jsonFilePath);
         }
@@ -111,7 +110,6 @@ function processWithPython(req, res, jsonFilePath) {
         'sendIA.py',
         jsonFilePath
     ];
-    
     if (process.env.COPILOT_API_ENDPOINT) {
         pythonArgs.push('--api-endpoint', process.env.COPILOT_API_ENDPOINT);
         if (process.env.COPILOT_API_KEY) {
@@ -147,7 +145,6 @@ function processWithPython(req, res, jsonFilePath) {
         if (outputFileMatch) {
             // Au cas où le script Python n'a pas supprimé tous les fichiers
             cleanupJsonFiles();
-            
             res.json({
                 success: true,
                 message: 'Compte rendu généré avec succès'
