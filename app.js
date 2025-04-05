@@ -1,12 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
-
     const dropArea = document.getElementById('drop-area');
     const fileInput = document.getElementById('fileInput');
     const fileSelect = document.getElementById('fileSelect');
     const statusElement = document.getElementById('status');
-
     // Suppression du prompt personnalisé car l'agent Azure AI est déjà configuré
-
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropArea.addEventListener(eventName, preventDefaults, false);
         document.body.addEventListener(eventName, preventDefaults, false);
@@ -81,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statusElement.textContent = message;
         statusElement.className = type;
     }
+
     // Fonction pour envoyer le fichier JSON à l'agent Azure AI
     async function sendJsonToAzureAgent(file) {
         try {
