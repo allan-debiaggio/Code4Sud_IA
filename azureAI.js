@@ -3,6 +3,7 @@
  * Utilise le SDK officiel pour communiquer avec l'agent
  */
 const { AIProjectsClient } = require("@azure/ai-projects");
+const { DefaultAzureCredential } = require("@azure/identity");
 const fs = require('fs');
 const authConfig = require('./setup_auth');
 
@@ -14,10 +15,21 @@ class AzureAIConnector {
         this.agentId = config.agentId || authConfig.agentId;
         this.threadId = config.threadId || authConfig.threadId;
 
-        // Initialisation du client Azure AI Projects
+        // Initialisation du client Azure AI Projects avec la méthode fromConnectionString
         try {
-            this.client = new AIProjectsClient(this.connectionString, { key: this.apiKey });
+            console.log('Tentative de connexion à Azure AI Projects avec la chaîne de connexion...');
+            console.log(`Connection string: ${this.connectionString.split(';').join(' | ')}`);
+            // Utilisation de la même méthode que dans setup.js
+            this.client = AIProjectsClient.fromConnectionString(
+                this.connectionString,
+                new DefaultAzureCredential()
+            );
+            console.log('Client Azure AI Projects initialisé avec succès');
+            console.log(`Agent ID: ${this.agentId}`);
+            console.log(`Thread ID: ${this.threadId}`);
         } catch (error) {
+            console.error('ERREUR lors de l\'initialisation du client Azure AI:', error.message);
+            console.error('Détails:', JSON.stringify(error, null, 2));
             throw error;
         }
     }
@@ -29,30 +41,48 @@ class AzureAIConnector {
      */
     async analyzeConversation(jsonData) {
         try {
+            console.log('Début de l\'analyse avec Azure AI Foundry...');
+            
             // Récupérer l'agent et le thread
+            console.log(`Tentative de récupération de l'agent ${this.agentId}...`);
             const agent = await this.client.agents.getAgent(this.agentId);
+            console.log(`Agent récupéré avec succès: ${agent.name}`);
+            
+            // Récupérer le thread existant
+            console.log(`Tentative de récupération du thread ${this.threadId}...`);
+            const thread = await this.client.agents.getThread(this.threadId);
+            console.log(`Thread récupéré, thread ID: ${thread.id}`);
             
             // Création du message avec les données JSON
             const jsonContent = JSON.stringify(jsonData, null, 2);
             const prompt = `Analyse cette conversation et identifie s'il y a des signes de harcèlement. Fais un rapport détaillé en français:\n\n${jsonContent}`;
             
-            const message = await this.client.agents.createMessage(this.threadId, {
+            console.log(`Création d'un nouveau message dans le thread ${this.threadId}...`);
+            const message = await this.client.agents.createMessage(thread.id, {
                 role: "user",
                 content: prompt
             });
+            console.log(`Message créé avec succès, ID: ${message.id}`);
             
             // Création et suivi du run
-            let run = await this.client.agents.createRun(this.threadId, this.agentId);
+            console.log('Démarrage d\'un nouveau run...');
+            let run = await this.client.agents.createRun(thread.id, this.agentId);
+            console.log(`Run créé avec l'ID: ${run.id}, statut initial: ${run.status}`);
             
             // Attendre que le run soit terminé
+            console.log('Attente de la fin du traitement...');
             while (run.status === "queued" || run.status === "in_progress") {
                 await new Promise(resolve => setTimeout(resolve, 1000));
-                run = await this.client.agents.getRun(this.threadId, run.id);
+                run = await this.client.agents.getRun(thread.id, run.id);
+                console.log(`Statut actuel du run: ${run.status}`);
             }
+            
+            console.log(`Run terminé avec statut final: ${run.status}`);
             
             if (run.status === "completed") {
                 // Récupérer les derniers messages
-                const messages = await this.client.agents.listMessages(this.threadId);
+                console.log('Récupération des messages...');
+                const messages = await this.client.agents.listMessages(thread.id);
                 
                 // Récupérer la dernière réponse de l'assistant (le dernier message)
                 const assistantMessages = messages.data.filter(msg => msg.role === "assistant");
@@ -66,6 +96,7 @@ class AzureAIConnector {
                         }
                     }
                     
+                    console.log('Analyse reçue avec succès de Azure AI');
                     return {
                         success: true,
                         analysis: analysisText
@@ -76,7 +107,17 @@ class AzureAIConnector {
             throw new Error(`Échec de l'analyse. Statut du run: ${run.status}`);
             
         } catch (error) {
+            console.error('ERREUR lors de la communication avec Azure AI:', error.message);
+            console.error('Type d\'erreur:', error.constructor.name);
+            console.error('Stack trace:', error.stack);
+            
+            if (error.response) {
+                console.error('Détails de la réponse:', JSON.stringify(error.response.data || {}, null, 2));
+                console.error('Status code:', error.response.status);
+            }
+            
             // Utilisation de la méthode de fallback avec analyse locale
+            console.log('Utilisation de l\'analyse locale de fallback...');
             const fallbackAnalysis = this.performFallbackAnalysis(jsonData);
             
             return {
@@ -101,27 +142,37 @@ class AzureAIConnector {
                 if (resultLevel.includes("niveau 1") || resultLevel.includes("1")) {
                     analysisResult += "✓ AUCUN SIGNE DE HARCÈLEMENT DÉTECTÉ\n\n";
                     analysisResult += "CONCLUSION: L'analyse n'a pas identifié de signes évidents de harcèlement dans cette conversation.\n\n";
-                    analysisResult += "RECOMMANDATION: Aucune action particulière n'est requise. La conversation semble saine et respectueuse.\n";
+                    analysisResult += "RECOMMANDATION: Salut ! Si tu ressens quelque chose qui te dérange ou si quelque chose te pèse à l'école, parler à \
+                    un adulte de confiance peut vraiment aider. Les amis, profs ou famille, sont souvent là pour te soutenir si tu en as besoin. Tu as des \
+                    ressources aussi, comme le 3018, un numéro gratuit et confidentiel pour jeunes qui rencontrent des soucis comme le harcèlement ou autre. \
+                    Reste cool, prends soin de toi, et sache que tu n'es jamais seul(e) ! 😊\n";
                 }
                 else if (resultLevel.includes("niveau 2") || resultLevel.includes("2")) {
                     analysisResult += "⚠️ SIGNES LÉGERS DE HARCÈLEMENT DÉTECTÉS\n\n";
                     analysisResult += "CONCLUSION: L'analyse a détecté quelques signes de tension et potentiellement des microagressions dans cette conversation.\n\n";
-                    analysisResult += "RECOMMANDATION: Une vigilance est conseillée. Il serait bon de surveiller l'évolution de ces interactions.\n";
+                    analysisResult += "RECOMMANDATIO : Hey ! Je remarque que certains mots utilisés pourraient blesser. Rappelle-toi, c'est super important de maintenir une ambiance \
+                    respectueuse et bienveillante, que ce soit ici ou à l'école. Les mots peuvent avoir un gros impact, alors prenons le temps de bien réfléchir avant \
+                    de les utiliser. Il n'est jamais trop tard pour être gentil et aider à créer un environnement positif pour tout le monde. Si tu veux en parler ou que \
+                    tu as besoin d'aide, tu peux contacter le 3018, un service gratuit et confidentiel pour les jeunes, sur ce site Lien vers le 3018 : Service-Public\n"; // Lien Hypertexte à rajouter à la place de Service-public
                 }
                 else if (resultLevel.includes("niveau 3") || resultLevel.includes("3")) {
                     analysisResult += "⚠️ SIGNES MODÉRÉS DE HARCÈLEMENT DÉTECTÉS ⚠️\n\n";
                     analysisResult += "CONCLUSION: Cette conversation présente des signes clairs de tension et d'hostilité qui pourraient constituer du harcèlement.\n\n";
-                    analysisResult += "RECOMMANDATION: Une intervention adulte est recommandée. Ces comportements nécessitent une prise en charge.\n";
+                    analysisResult += "RECOMMANDATION: Salut, je remarque que ça pourrait aller un peu loin ici. Rappelle-toi que chacun mérite respect et écoute. Le harcèlement, c'est pris au sérieux, et il est important de rester vigilant. Si jamais tu te retrouves dans une telle situation ou connais quelqu'un qui a besoin d'aide, n'hésite surtout pas à appeler le 3018 ou visiter leur site. Ce service est dédié pour les jeunes, gratuit et totalement confidentiel. Prends bien soin de toi et des autres ! 🙂\n";
                 }
                 else if (resultLevel.includes("niveau 4") || resultLevel.includes("4")) {
                     analysisResult += "⚠️⚠️ SIGNES SÉVÈRES DE HARCÈLEMENT DÉTECTÉS ⚠️⚠️\n\n";
                     analysisResult += "CONCLUSION: Cette conversation contient des signes alarmants de harcèlement caractérisé avec des attaques personnelles répétées.\n\n";
-                    analysisResult += "RECOMMANDATION: Une intervention immédiate est nécessaire. Contactez un responsable ou signalez cette situation au 3018.\n";
+                    analysisResult += "RECOMMANDATION: Attention, ce qui se passe ici semble vraiment grave et pourrait avoir des conséquences sérieuses. Le harcèlement est interdit et puni sévèrement par la loi. Par exemple, le harcèlement scolaire (Article 222-33-2-3 du Code pénal) peut entraîner jusqu'à 3 ans de prison et 45 000 € d'amende, voire 10 ans et 150 000 € si cela mène à une tentative de suicide.\n";
+                    analysisResult += "Il est urgent d'agir. Contacte le 3018 pour signaler la situation. C'est un service gratuit et confidentiel pour aider les jeunes victimes de harcèlement et de violences numériques.\n";
+                    analysisResult += "N'oublie pas, tu mérites d'être en sécurité et respecté(e). Si tu as besoin, je suis là pour aider ou te guider davantage.\n"; // Lien hypertexte vers 30 18 et vers Code Pénal (Section 5 - Du harcèlement moral)
                 }
                 else if (resultLevel.includes("niveau 5") || resultLevel.includes("5")) {
                     analysisResult += "⚠️⚠️⚠️ HARCÈLEMENT GRAVE DÉTECTÉ ⚠️⚠️⚠️\n\n";
                     analysisResult += "CONCLUSION: Cette conversation montre des signes de harcèlement grave et potentiellement dangereux nécessitant une action immédiate.\n\n";
-                    analysisResult += "RECOMMANDATION: URGENCE - Contactez immédiatement le 3018 ou les autorités compétentes. Cette situation requiert une intervention professionnelle sans délai.\n";
+                    analysisResult += "RECOMMANDATION: URGENCE - Bonjour. Cette situation est extrêmement préoccupante et doit être traitée immédiatement. Si quelqu’un est victime de harcèlement grave, sachez que la loi protège chacune des victimes. Selon l'article 222-33-2-3 du Code pénal, le harcèlement scolaire est passible de peines allant jusqu'à 10 ans de prison et 150 000 € d'amende, notamment si cela conduit à une tentative de suicide.\n\n";
+                    analysisResult += "Il est crucial de contacter rapidement une assistance spécialisée pour signaler la situation. Le service 3018 est là pour vous aider. C'est gratuit, confidentiel et disponible au site du 3018.\n\n";
+                    analysisResult += "Si les faits persistent, n'hésitez pas à en parler à un adulte de confiance, comme un enseignant ou un parent, et déposer une plainte auprès des autorités compétentes. Votre bien-être et sécurité sont la priorité absolue.\n";
                 }
                 else {
                     if (resultLevel.includes("harcelement") || resultLevel.includes("harcèlement")) {
@@ -134,7 +185,6 @@ class AzureAIConnector {
                         analysisResult += "RECOMMANDATION: Une analyse humaine approfondie est recommandée.\n";
                     }
                 }
-                
                 return analysisResult;
             }
             

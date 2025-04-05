@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fonction pour envoyer le fichier JSON à l'agent Azure AI
     async function sendJsonToAzureAgent(file) {
         try {
-            updateStatus('Envoi du fichier à l\'agent pour analyse...', 'info');
+            updateStatus('Analyse de la conversation en cours...', 'info');
             // Créer un FormData pour envoyer uniquement le fichier
             const formData = new FormData();
             formData.append('json_file', file);
