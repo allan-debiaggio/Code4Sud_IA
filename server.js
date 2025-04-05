@@ -2,26 +2,31 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process'); // Conservation pour compatibilité
-const AzureAIConnector = require('./azureAI'); // Import du nouveau module
+const { spawn } = require('child_process');
+const AzureAIConnector = require('./azureAI');
 
 const app = express();
 const port = 3000;
 
+// Initialisation du connecteur Azure AI avec les valeurs directement depuis le code fourni
 let azureAI = null;
-if (process.env.AZURE_AI_ENDPOINT && process.env.AZURE_AI_KEY) {
+try {
     azureAI = new AzureAIConnector({
-        apiEndpoint: process.env.AZURE_AI_ENDPOINT,
-        apiKey: process.env.AZURE_AI_KEY,
-        modelVersion: process.env.AZURE_AI_MODEL_VERSION || 'latest'
+        connectionString: "swedencentral.api.azureml.ms;09134cae-5522-4a7f-9f41-2a860de20aa6;hackathon-1023;aiproject-1023",
+        agentId: "asst_EJx4OEb5T7BoNIhyJHxn0wnS",
+        threadId: "thread_hNCAq98lNQl3WKFnl3a9YKjf"
     });
     console.log('Azure AI Foundry configuré et prêt à l\'emploi');
-} else {
-    console.log('Variables Azure AI non définies, utilisation du traitement local par défaut');
+} catch (error) {
+    console.error('Erreur lors de l\'initialisation d\'Azure AI Foundry:', error.message);
+    console.log('Utilisation du traitement local par défaut');
+    azureAI = null;
 }
 
+// Servir les fichiers statiques
 app.use(express.static(path.join(__dirname)));
 
+// Configuration de multer pour le stockage des fichiers
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         const uploadDir = path.join(__dirname, 'uploads');
@@ -62,27 +67,29 @@ app.post('/process-json', upload.single('json_file'), async (req, res) => {
     }
 
     const jsonFilePath = req.file.path;
-
+    
     // Si Azure AI est configuré, utilisez-le pour l'analyse
     if (azureAI) {
         try {
             // Lire le contenu du fichier JSON
             const jsonContent = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
-
-            // Analyser directement via Azure AI Foundry
+            
+            // Analyser via Azure AI Foundry SDK
+            console.log('Envoi du fichier JSON à l\'agent Azure AI Foundry...');
             const analysisResult = await azureAI.analyzeConversation(jsonContent);
-
+            
             if (analysisResult.success) {
                 // Sauvegarder le résultat dans un fichier
                 const outputFilePath = path.join(
                     path.dirname(jsonFilePath),
                     `output_${path.basename(jsonFilePath, '.json')}.txt`
                 );
-
+                
                 await azureAI.saveAnalysisResult(analysisResult.analysis, outputFilePath);
-
+                
+                // Nettoyer tous les fichiers JSON
                 cleanupJsonFiles();
-
+                
                 res.json({
                     success: true,
                     message: 'Analyse effectuée avec succès via Azure AI Foundry'
@@ -95,6 +102,7 @@ app.post('/process-json', upload.single('json_file'), async (req, res) => {
             }
         } catch (error) {
             console.error('Erreur lors du traitement avec Azure AI:', error);
+            
             // Fallback à la méthode Python
             processWithPython(req, res, jsonFilePath);
         }
@@ -110,13 +118,7 @@ function processWithPython(req, res, jsonFilePath) {
         'sendIA.py',
         jsonFilePath
     ];
-    if (process.env.COPILOT_API_ENDPOINT) {
-        pythonArgs.push('--api-endpoint', process.env.COPILOT_API_ENDPOINT);
-        if (process.env.COPILOT_API_KEY) {
-            pythonArgs.push('--api-key', process.env.COPILOT_API_KEY);
-        }
-    }
-
+    
     const pythonProcess = spawn('python3', pythonArgs);
 
     let outputData = '';
@@ -145,6 +147,7 @@ function processWithPython(req, res, jsonFilePath) {
         if (outputFileMatch) {
             // Au cas où le script Python n'a pas supprimé tous les fichiers
             cleanupJsonFiles();
+            
             res.json({
                 success: true,
                 message: 'Compte rendu généré avec succès'
