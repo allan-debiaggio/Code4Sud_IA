@@ -20,9 +20,6 @@ module.exports = {
     threadId
 };
 
-console.log('Configuration d\'authentification chargée');
-console.log('Utilisation de l\'authentification personnalisée par API key');
-
 // Créer un fichier .env pour export des variables si nécessaire
 const envFilePath = path.join(__dirname, '.env');
 const exportCommands = [
@@ -33,5 +30,3 @@ const exportCommands = [
 ].join('\n');
 
 fs.writeFileSync(envFilePath, exportCommands);
-console.log(`Variables exportées dans le fichier: ${envFilePath}`);
-console.log('Pour les utiliser dans votre terminal: source .env');

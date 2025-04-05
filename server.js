@@ -16,10 +16,7 @@ const port = 3000;
 let azureAI = null;
 try {
     azureAI = new AzureAIConnector();
-    console.log('Azure AI Foundry configuré et prêt à l\'emploi');
 } catch (error) {
-    console.error('Erreur lors de l\'initialisation d\'Azure AI Foundry:', error.message);
-    console.log('Utilisation du traitement local par défaut');
     azureAI = null;
 }
 
@@ -51,9 +48,7 @@ function cleanupJsonFiles() {
             if (file.endsWith('.json')) {
                 try {
                     fs.unlinkSync(path.join(uploadDir, file));
-                    console.log(`Nettoyage: Fichier JSON supprimé: ${file}`);
                 } catch (err) {
-                    console.error(`Erreur lors de la suppression de ${file}: ${err.message}`);
                 }
             }
         });
@@ -75,7 +70,6 @@ app.post('/process-json', upload.single('json_file'), async (req, res) => {
             const jsonContent = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
             
             // Analyser via Azure AI Foundry SDK
-            console.log('Envoi du fichier JSON à l\'agent Azure AI Foundry...');
             const analysisResult = await azureAI.analyzeConversation(jsonContent);
             
             if (analysisResult.success) {
@@ -92,7 +86,8 @@ app.post('/process-json', upload.single('json_file'), async (req, res) => {
                 
                 res.json({
                     success: true,
-                    message: 'Analyse effectuée avec succès via Azure AI Foundry'
+                    message: 'Analyse effectuée avec succès via Azure AI Foundry',
+                    analysis: analysisResult.analysis // Retourne l'analyse au client
                 });
             } else {
                 res.status(500).json({
@@ -101,8 +96,6 @@ app.post('/process-json', upload.single('json_file'), async (req, res) => {
                 });
             }
         } catch (error) {
-            console.error('Erreur lors du traitement avec Azure AI:', error);
-            
             // Fallback à la méthode Python
             processWithPython(req, res, jsonFilePath);
         }
@@ -134,8 +127,6 @@ function processWithPython(req, res, jsonFilePath) {
 
     pythonProcess.on('close', (code) => {
         if (code !== 0) {
-            console.error(`Processus Python terminé avec le code: ${code}`);
-            console.error(`Erreur: ${errorData}`);
             return res.status(500).json({
                 success: false,
                 error: `Erreur lors de l'exécution du script: ${errorData}`
@@ -145,13 +136,25 @@ function processWithPython(req, res, jsonFilePath) {
         // Vérifier si le traitement a réussi
         const outputFileMatch = outputData.match(/Le compte rendu (?:simplifié )?a été enregistré dans: (.+)$/m);
         if (outputFileMatch) {
-            // Au cas où le script Python n'a pas supprimé tous les fichiers
-            cleanupJsonFiles();
-            
-            res.json({
-                success: true,
-                message: 'Compte rendu généré avec succès'
-            });
+            // Lire le contenu du fichier généré pour l'envoyer au client
+            const outputFilePath = outputFileMatch[1];
+            try {
+                const analysisContent = fs.readFileSync(outputFilePath, 'utf8');
+                
+                // Au cas où le script Python n'a pas supprimé tous les fichiers
+                cleanupJsonFiles();
+                
+                res.json({
+                    success: true,
+                    message: 'Compte rendu généré avec succès',
+                    analysis: analysisContent // Retourne l'analyse au client
+                });
+            } catch (err) {
+                res.status(500).json({
+                    success: false,
+                    error: `Erreur lors de la lecture du fichier d'analyse: ${err.message}`
+                });
+            }
         } else {
             res.status(500).json({
                 success: false,

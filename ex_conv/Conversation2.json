@@ -1,0 +1,31 @@
+{
+  "participants": ["Maxime", "Léa", "Thomas", "Camille"],
+  "messages": [
+    { "sender_name": "Maxime", "timestamp_ms": null, "content": "Salut les gens ! Alors, quoi de neuf dans vos vies pathétiques ?", "type": "Generic" },
+    { "sender_name": "Léa", "timestamp_ms": null, "content": "Salut Maxime. Toujours en train de juger les autres, hein ?", "type": "Generic" },
+    { "sender_name": "Thomas", "timestamp_ms": null, "content": "Sérieusement, Maxime. Ta vie est tellement passionnante que tu dois rabaisser les autres pour te sentir mieux ?", "type": "Generic" },
+    { "sender_name": "Camille", "timestamp_ms": null, "content": "Salut tout le monde. Maxime, tu devrais écrire un livre : \"Comment être détestable en quelques leçons\".", "type": "Generic" },
+    { "sender_name": "Maxime", "timestamp_ms": null, "content": "Haha, très drôle Camille. Ta vie est si passionnante que tu en es réduite à faire des blagues de niveau maternelle ?", "type": "Generic" },
+    { "sender_name": "Léa", "timestamp_ms": null, "content": "Bon, assez plaisanté. Des plans pour le weekend ?", "type": "Generic" },
+    { "sender_name": "Thomas", "timestamp_ms": null, "content": "On pourrait se retrouver, mais j'espère que Maxime n'apportera pas son caractère insupportable avec lui.", "type": "Generic" },
+    { "sender_name": "Camille", "timestamp_ms": null, "content": "Oui, ne serait-ce que pour une fois, Maxime, fais un effort. On pourrait aller au parc.", "type": "Generic" },
+    { "sender_name": "Maxime", "timestamp_ms": null, "content": "Oh, très original Camille. Va pour le parc. Je vais apporter des snacks, au moins mes snacks ne jugent pas les gens.", "type": "Generic" },
+    { "sender_name": "Léa", "timestamp_ms": null, "content": "Le parc Lavigne, cela vous va ?", "type": "Generic" },
+    { "sender_name": "Thomas", "timestamp_ms": null, "content": "Oui, mais s'il vous plaît, quelqu'un s'assure que Maxime laisse son mauvais caractère à la maison.", "type": "Generic" },
+    { "sender_name": "Camille", "timestamp_ms": null, "content": "J'apporterai des boissons. Et Maxime, n'oublie pas de boire de l'eau pour diluer ton arrogance.", "type": "Generic" },
+    { "sender_name": "Maxime", "timestamp_ms": null, "content": "Haha, très spirituel Camille. Je vais apporter du soda et du jus de fruits. Peut-être que cela adoucira ta langue venimeuse.", "type": "Generic" },
+    { "sender_name": "Léa", "timestamp_ms": null, "content": "Je préparais des sandwiches, mais je suis sûre que Maxime trouvera quelque chose à redire.", "type": "Generic" },
+    { "sender_name": "Thomas", "timestamp_ms": null, "content": "Je vais apporter des fruits et des chips. Rien que pour voir si Maxime peut être positif pour une fois.", "type": "Generic" },
+    { "sender_name": "Camille", "timestamp_ms": null, "content": "J'apporte des couvertures et des jeux de société. Peut-être qu'on pourra jouer à \"Qui est le plus désagréable?\" et Maxime, tu gagneras haut la main.", "type": "Generic" },
+    { "sender_name": "Maxime", "timestamp_ms": null, "content": "Parfait, Camille. J'adore quand tu essayes d'être spirituelle, ça donne des résultats si pitoyables.", "type": "Generic" },
+    { "sender_name": "Léa", "timestamp_ms": null, "content": "À quelle heure on se retrouve ? Et Maxime, essaye d'être ponctuel pour une fois.", "type": "Generic" },
+    { "sender_name": "Thomas", "timestamp_ms": null, "content": "Disons 11h au kiosque du parc. Maxime, t'auras toute la matinée pour te préparer à être insupportable.", "type": "Generic" },
+    { "sender_name": "Camille", "timestamp_ms": null, "content": "Ok. Précoce dans la moquerie, Maxime, tu devrais arriver tôt pour être prêt.", "type": "Generic" },
+    { "sender_name": "Maxime", "timestamp_ms": null, "content": "Très bien, à samedi alors. Préparez-vous à faire face à la jalousie.", "type": "Generic" }
+  ],
+  "title": "Maxime, Léa, Thomas, Camille",
+  "is_still_participant": true,
+  "thread_type": "Regular",
+  "thread_path": "inbox/discussion_malicious+",
+  "result": "Harcelement niveau 5"
+}

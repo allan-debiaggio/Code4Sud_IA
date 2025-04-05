@@ -13,7 +13,9 @@ body {
     line-height: 1.6;
     min-height: 100vh;
     position: relative;
-    padding-bottom: 80px; /* Space for footer */
+    padding-bottom: 120px; /* Increased space for footer */
+    display: flex;
+    flex-direction: column;
 }
 
 .header {
@@ -71,6 +73,7 @@ h1 {
     display: grid;
     grid-template-columns: 1fr;
     gap: 30px;
+    margin-bottom: 60px; /* Extra space before footer */
 }
 
 @media (min-width: 768px) {
@@ -298,8 +301,10 @@ footer {
     padding: 20px;
     position: absolute;
     bottom: 0;
+    left: 0;
     width: 100%;
     backdrop-filter: blur(10px);
+    margin-top: auto; /* Push footer to bottom */
 }
 
 footer p {

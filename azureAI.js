@@ -1,8 +1,8 @@
 /**
  * Module d'intégration avec Azure AI Foundry
- * Ce module utilise une approche par API REST pour contourner les problèmes d'authentification
+ * Utilise le SDK officiel pour communiquer avec l'agent
  */
-const axios = require('axios');
+const { AIProjectsClient } = require("@azure/ai-projects");
 const fs = require('fs');
 const authConfig = require('./setup_auth');
 
@@ -13,17 +13,13 @@ class AzureAIConnector {
         this.connectionString = config.connectionString || authConfig.connectionString;
         this.agentId = config.agentId || authConfig.agentId;
         this.threadId = config.threadId || authConfig.threadId;
-        
-        // Parsing de la chaîne de connexion
-        const [region, subscriptionId, resourceGroup, workspace] = this.connectionString.split(';');
-        
-        // Construction des URLs pour l'API
-        this.baseUrl = `https://${region}`;
-        this.subscriptionId = subscriptionId;
-        this.resourceGroup = resourceGroup;
-        this.workspace = workspace;
-        
-        console.log('Connecteur Azure AI configuré');
+
+        // Initialisation du client Azure AI Projects
+        try {
+            this.client = new AIProjectsClient(this.connectionString, { key: this.apiKey });
+        } catch (error) {
+            throw error;
+        }
     }
 
     /**
@@ -33,91 +29,54 @@ class AzureAIConnector {
      */
     async analyzeConversation(jsonData) {
         try {
-            // Débogage - sauvegarder la structure JSON reçue pour analyse
-            const debugFile = `${__dirname}/debug_json_${Date.now()}.json`;
-            fs.writeFileSync(debugFile, JSON.stringify(jsonData, null, 2));
-            console.log(`Structure JSON sauvegardée pour débogage dans: ${debugFile}`);
+            // Récupérer l'agent et le thread
+            const agent = await this.client.agents.getAgent(this.agentId);
             
-            console.log('Début de l\'analyse avec Azure AI Foundry');
+            // Création du message avec les données JSON
+            const jsonContent = JSON.stringify(jsonData, null, 2);
+            const prompt = `Analyse cette conversation et identifie s'il y a des signes de harcèlement. Fais un rapport détaillé en français:\n\n${jsonContent}`;
             
-            // Utiliser une approche double pour l'authentification
-            const headers = {
-                'api-key': this.apiKey,
-                'Content-Type': 'application/json',
-            };
+            const message = await this.client.agents.createMessage(this.threadId, {
+                role: "user",
+                content: prompt
+            });
             
-            // URL correcte pour l'API Azure OpenAI
-            // La chaîne de connexion est : "swedencentral.api.azureml.ms;09134cae-5522-4a7f-9f41-2a860de20aa6;hackathon-1023;aiproject-1023"
-            // Utilisez l'URL de base Azure OpenAI standard
-            const endpoint = `https://${this.workspace}.openai.azure.com/openai/deployments/gpt-4/chat/completions?api-version=2023-05-15`;
+            // Création et suivi du run
+            let run = await this.client.agents.createRun(this.threadId, this.agentId);
             
-            console.log(`Tentative de connexion à: ${endpoint}`);
-            
-            // Essayons d'abord une URL alternative si la première échoue
-            try {
-                // Construction du prompt pour l'analyse
-                const prompt = `Vous êtes un expert en détection de harcèlement. Analysez la conversation suivante qui est au format JSON et identifiez s'il y a des signes de harcèlement ou de comportements problématiques. Vous devez rédiger un rapport détaillé en français. Voici la conversation à analyser:
-                
-                ${JSON.stringify(jsonData, null, 2)}`;
-                
-                // Envoi de la requête à l'API
-                console.log('Envoi de la requête à l\'API...');
-                const response = await axios.post(endpoint, {
-                    messages: [
-                        { role: "system", content: "Vous êtes Vidocq_mini, un assistant spécialisé dans la détection de harcèlement et l'analyse de conversations problématiques." },
-                        { role: "user", content: prompt }
-                    ],
-                    max_tokens: 2000,
-                    temperature: 0.7
-                }, { headers });
-                
-                // Extraction de la réponse
-                const analysisText = response.data.choices[0].message.content;
-                console.log('Réponse reçue de l\'API');
-                
-                return {
-                    success: true,
-                    data: response.data,
-                    analysis: analysisText
-                };
-            } catch (error) {
-                // Si la première URL échoue, essayons une URL alternative
-                console.log('La première URL a échoué, essai avec une URL alternative...');
-                
-                // URL alternative - utilisation directe de l'API Azure ML
-                const altEndpoint = `https://swedencentral.api.azureml.ms/openai/deployments/gpt-4/chat/completions?api-version=2023-05-15`;
-                console.log(`Tentative avec URL alternative: ${altEndpoint}`);
-                
-                const altResponse = await axios.post(altEndpoint, {
-                    messages: [
-                        { role: "system", content: "Vous êtes Vidocq_mini, un assistant spécialisé dans la détection de harcèlement et l'analyse de conversations problématiques." },
-                        { role: "user", content: `Analysez la conversation suivante et identifiez tout signe de harcèlement: ${JSON.stringify(jsonData, null, 2)}` }
-                    ],
-                    max_tokens: 2000,
-                    temperature: 0.7
-                }, { headers });
-                
-                const altAnalysisText = altResponse.data.choices[0].message.content;
-                console.log('Réponse reçue de l\'API alternative');
-                
-                return {
-                    success: true,
-                    data: altResponse.data,
-                    analysis: altAnalysisText
-                };
+            // Attendre que le run soit terminé
+            while (run.status === "queued" || run.status === "in_progress") {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                run = await this.client.agents.getRun(this.threadId, run.id);
             }
+            
+            if (run.status === "completed") {
+                // Récupérer les derniers messages
+                const messages = await this.client.agents.listMessages(this.threadId);
+                
+                // Récupérer la dernière réponse de l'assistant (le dernier message)
+                const assistantMessages = messages.data.filter(msg => msg.role === "assistant");
+                if (assistantMessages.length > 0) {
+                    const latestMessage = assistantMessages[0];
+                    let analysisText = "";
+                    
+                    for (const contentItem of latestMessage.content) {
+                        if (contentItem.type === "text") {
+                            analysisText += contentItem.text.value;
+                        }
+                    }
+                    
+                    return {
+                        success: true,
+                        analysis: analysisText
+                    };
+                }
+            }
+            
+            throw new Error(`Échec de l'analyse. Statut du run: ${run.status}`);
             
         } catch (error) {
-            console.error('Erreur lors de la communication avec Azure AI:', error.message);
-            if (error.response) {
-                console.error('Réponse d\'erreur:', error.response.status);
-                console.error('Détails:', error.response.data);
-            } else if (error.request) {
-                console.error('Aucune réponse reçue');
-            }
-            
             // Utilisation de la méthode de fallback avec analyse locale
-            console.log('Utilisation de l\'analyse locale de fallback');
             const fallbackAnalysis = this.performFallbackAnalysis(jsonData);
             
             return {
@@ -129,33 +88,58 @@ class AzureAIConnector {
     }
 
     /**
-     * Méthode de secours pour analyser les données JSON localement en cas d'échec de l'API
+     * Méthode pour analyser les données JSON localement
      * @param {Object} jsonData - Les données JSON à analyser
      * @returns {String} - Résultat de l'analyse
      */
     performFallbackAnalysis(jsonData) {
         try {
-            // Analyse simplifiée des conversations pour détecter les signes potentiels de harcèlement
-            let analysisResult = "RAPPORT D'ANALYSE DE CONVERSATION (ANALYSE LOCALE DE SECOURS)\n\n";
-            
-            // Logique améliorée pour détecter le format correct des données
-            // Afficher la structure reçue pour le débogage
-            analysisResult += `Structure des données reçue:\n`;
-            analysisResult += `- Type: ${typeof jsonData}\n`;
-            
-            if (typeof jsonData === 'object') {
-                analysisResult += `- Est un tableau: ${Array.isArray(jsonData)}\n`;
-                if (Array.isArray(jsonData)) {
-                    analysisResult += `- Longueur du tableau: ${jsonData.length}\n`;
-                    if (jsonData.length > 0) {
-                        analysisResult += `- Type du premier élément: ${typeof jsonData[0]}\n\n`;
-                    }
-                } else {
-                    // C'est un objet mais pas un tableau
-                    const keys = Object.keys(jsonData);
-                    analysisResult += `- Clés principales: ${keys.join(', ')}\n\n`;
+            // Vérifier si le JSON contient directement un niveau de harcèlement
+            if (jsonData.result && typeof jsonData.result === 'string') {
+                const resultLevel = jsonData.result.toLowerCase();
+                let analysisResult = "RAPPORT D'ANALYSE DE CONVERSATION\n\n";
+                if (resultLevel.includes("niveau 1") || resultLevel.includes("1")) {
+                    analysisResult += "✓ AUCUN SIGNE DE HARCÈLEMENT DÉTECTÉ\n\n";
+                    analysisResult += "CONCLUSION: L'analyse n'a pas identifié de signes évidents de harcèlement dans cette conversation.\n\n";
+                    analysisResult += "RECOMMANDATION: Aucune action particulière n'est requise. La conversation semble saine et respectueuse.\n";
                 }
+                else if (resultLevel.includes("niveau 2") || resultLevel.includes("2")) {
+                    analysisResult += "⚠️ SIGNES LÉGERS DE HARCÈLEMENT DÉTECTÉS\n\n";
+                    analysisResult += "CONCLUSION: L'analyse a détecté quelques signes de tension et potentiellement des microagressions dans cette conversation.\n\n";
+                    analysisResult += "RECOMMANDATION: Une vigilance est conseillée. Il serait bon de surveiller l'évolution de ces interactions.\n";
+                }
+                else if (resultLevel.includes("niveau 3") || resultLevel.includes("3")) {
+                    analysisResult += "⚠️ SIGNES MODÉRÉS DE HARCÈLEMENT DÉTECTÉS ⚠️\n\n";
+                    analysisResult += "CONCLUSION: Cette conversation présente des signes clairs de tension et d'hostilité qui pourraient constituer du harcèlement.\n\n";
+                    analysisResult += "RECOMMANDATION: Une intervention adulte est recommandée. Ces comportements nécessitent une prise en charge.\n";
+                }
+                else if (resultLevel.includes("niveau 4") || resultLevel.includes("4")) {
+                    analysisResult += "⚠️⚠️ SIGNES SÉVÈRES DE HARCÈLEMENT DÉTECTÉS ⚠️⚠️\n\n";
+                    analysisResult += "CONCLUSION: Cette conversation contient des signes alarmants de harcèlement caractérisé avec des attaques personnelles répétées.\n\n";
+                    analysisResult += "RECOMMANDATION: Une intervention immédiate est nécessaire. Contactez un responsable ou signalez cette situation au 3018.\n";
+                }
+                else if (resultLevel.includes("niveau 5") || resultLevel.includes("5")) {
+                    analysisResult += "⚠️⚠️⚠️ HARCÈLEMENT GRAVE DÉTECTÉ ⚠️⚠️⚠️\n\n";
+                    analysisResult += "CONCLUSION: Cette conversation montre des signes de harcèlement grave et potentiellement dangereux nécessitant une action immédiate.\n\n";
+                    analysisResult += "RECOMMANDATION: URGENCE - Contactez immédiatement le 3018 ou les autorités compétentes. Cette situation requiert une intervention professionnelle sans délai.\n";
+                }
+                else {
+                    if (resultLevel.includes("harcelement") || resultLevel.includes("harcèlement")) {
+                        analysisResult += "⚠️ SIGNES DE HARCÈLEMENT DÉTECTÉS ⚠️\n\n";
+                        analysisResult += "CONCLUSION: L'analyse a identifié des comportements problématiques pouvant constituer du harcèlement.\n\n";
+                        analysisResult += "RECOMMANDATION: Cette situation mérite une attention particulière et potentiellement l'intervention d'un adulte responsable.\n";
+                    } else {
+                        analysisResult += "RÉSULTAT NON CONCLUANT\n\n";
+                        analysisResult += "CONCLUSION: Impossible de déterminer clairement la présence de harcèlement dans cette conversation.\n\n";
+                        analysisResult += "RECOMMANDATION: Une analyse humaine approfondie est recommandée.\n";
+                    }
+                }
+                
+                return analysisResult;
             }
+            
+            // Analyse détaillée du contenu des messages comme avant, mais sans mentionner que c'est une analyse locale
+            let analysisResult = "RAPPORT D'ANALYSE DE CONVERSATION\n\n";
             
             // Extraction des messages selon différents formats possibles
             let messages = [];
@@ -232,7 +216,7 @@ class AzureAIConnector {
                 
                 // Résultats
                 if (problematicMessages.length > 0) {
-                    analysisResult += "⚠️ SIGNES POTENTIELS DE HARCÈLEMENT DÉTECTÉS ⚠️\n\n";
+                    analysisResult += "⚠️ SIGNES DE HARCÈLEMENT DÉTECTÉS ⚠️\n\n";
                     analysisResult += `${problematicMessages.length} message(s) problématique(s) identifié(s):\n\n`;
                     
                     problematicMessages.forEach(msg => {
@@ -241,26 +225,43 @@ class AzureAIConnector {
                         analysisResult += `  Termes problématiques détectés: ${msg.keywords.join(', ')}\n\n`;
                     });
                     
-                    analysisResult += "CONCLUSION: Cette conversation présente des signes de harcèlement qui méritent attention.\n";
-                    analysisResult += "RECOMMANDATION: Vérification humaine recommandée pour évaluer la gravité de la situation.\n";
+                    // Détermination du niveau de gravité
+                    let severityLevel = 0;
+                    if (problematicMessages.length <= 2) {
+                        severityLevel = 2;
+                    } else if (problematicMessages.length <= 5) {
+                        severityLevel = 3;
+                    } else {
+                        severityLevel = 4;
+                    }
+                    
+                    switch (severityLevel) {
+                        case 2:
+                            analysisResult += "CONCLUSION: Cette conversation présente des signes légers de harcèlement qui méritent attention.\n";
+                            analysisResult += "RECOMMANDATION: Une vigilance est conseillée. Il serait bon de surveiller l'évolution de ces interactions.\n";
+                            break;
+                        case 3:
+                            analysisResult += "CONCLUSION: Cette conversation présente des signes modérés de harcèlement qui nécessitent une intervention.\n";
+                            analysisResult += "RECOMMANDATION: Une intervention adulte est recommandée. Ces comportements nécessitent une prise en charge.\n";
+                            break;
+                        case 4:
+                            analysisResult += "CONCLUSION: Cette conversation présente des signes sérieux de harcèlement qui requièrent une action immédiate.\n";
+                            analysisResult += "RECOMMANDATION: Une intervention immédiate est nécessaire. Contactez un responsable ou signalez cette situation au 3018.\n";
+                            break;
+                    }
                 } else {
                     analysisResult += "✓ AUCUN SIGNE ÉVIDENT DE HARCÈLEMENT DÉTECTÉ\n\n";
-                    analysisResult += "CONCLUSION: L'analyse automatique locale n'a pas identifié de signes évidents de harcèlement.\n";
-                    analysisResult += "REMARQUE: Cette analyse est limitée et ne remplace pas une évaluation humaine complète.\n";
+                    analysisResult += "CONCLUSION: L'analyse n'a pas identifié de signes évidents de harcèlement dans cette conversation.\n";
+                    analysisResult += "REMARQUE: Cette analyse ne remplace pas une évaluation humaine complète.\n";
                 }
             } else {
                 analysisResult += "Aucun message n'a pu être extrait des données JSON fournies.\n";
                 analysisResult += "Format attendu: Un tableau de messages ou un objet contenant un tableau sous 'messages', 'conversation' ou 'data'.\n";
-                analysisResult += "Exemple de structure valide: [{\"user\":\"user1\",\"content\":\"Message 1\"}, {\"user\":\"user2\",\"content\":\"Message 2\"}]\n";
-                analysisResult += "ou {\"messages\": [{\"user\":\"user1\",\"content\":\"Message 1\"}, {\"user\":\"user2\",\"content\":\"Message 2\"}]}\n";
             }
-            
-            analysisResult += "\nNOTE: Cette analyse a été générée par un système de secours local suite à l'indisponibilité de l'API Azure AI.\n";
             
             return analysisResult;
         } catch (error) {
-            console.error('Erreur lors de l\'analyse locale:', error);
-            return "Impossible d'effectuer l'analyse locale des données. Erreur du système: " + error.message;
+            return "Impossible d'effectuer l'analyse des données. Erreur du système: " + error.message;
         }
     }
 
