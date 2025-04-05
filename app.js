@@ -136,7 +136,12 @@ document.addEventListener('DOMContentLoaded', () => {
             cursor: pointer;
             color: #333;
         `;
-        closeButton.onclick = () => popup.remove();
+        closeButton.onclick = () => {
+            popup.remove();
+            overlay.remove();
+            // Réinitialiser le champ de fichier pour permettre une nouvelle analyse
+            resetFileInput();
+        };
         
         header.appendChild(title);
         header.appendChild(closeButton);
