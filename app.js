@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
             color: #333;
             white-space: pre-wrap;
         `;
-        
+
         // Bouton pour télécharger le rapport
         const downloadButton = document.createElement('button');
         downloadButton.textContent = 'Télécharger le rapport';
@@ -184,15 +184,15 @@ document.addEventListener('DOMContentLoaded', () => {
             a.click();
             document.body.removeChild(a);
         };
-        
+
         // Ajouter les éléments au popup
         popup.appendChild(header);
         popup.appendChild(content);
         popup.appendChild(downloadButton);
-        
+
         // Ajouter le popup au document
         document.body.appendChild(popup);
-        
+
         // Ajouter l'overlay
         const overlay = document.createElement('div');
         overlay.style.cssText = `
