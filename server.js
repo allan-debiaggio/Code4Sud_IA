@@ -3,19 +3,19 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+
+// Charger la configuration d'authentification Azure
+require('./setup_auth');
+
 const AzureAIConnector = require('./azureAI');
 
 const app = express();
 const port = 3000;
 
-// Initialisation du connecteur Azure AI avec les valeurs directement depuis le code fourni
+// Initialisation du connecteur Azure AI avec le SDK officiel
 let azureAI = null;
 try {
-    azureAI = new AzureAIConnector({
-        connectionString: "swedencentral.api.azureml.ms;09134cae-5522-4a7f-9f41-2a860de20aa6;hackathon-1023;aiproject-1023",
-        agentId: "asst_EJx4OEb5T7BoNIhyJHxn0wnS",
-        threadId: "thread_hNCAq98lNQl3WKFnl3a9YKjf"
-    });
+    azureAI = new AzureAIConnector();
     console.log('Azure AI Foundry configuré et prêt à l\'emploi');
 } catch (error) {
     console.error('Erreur lors de l\'initialisation d\'Azure AI Foundry:', error.message);

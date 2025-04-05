@@ -8,7 +8,7 @@ body {
     font-family: 'Montserrat', 'Segoe UI', sans-serif;
     margin: 0;
     padding: 0;
-    background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
+    background: linear-gradient(135deg, #f8f5f5 0%, #f9f9f9 100%);
     color: #333;
     line-height: 1.6;
     min-height: 100vh;
@@ -17,7 +17,7 @@ body {
 }
 
 .header {
-    background: linear-gradient(135deg, #ff3366 0%, #ff6b6b 100%);
+    background: linear-gradient(135deg, #FFD1DC 0%, #ff6b6b 100%);
     padding: 30px 20px;
     color: white;
     text-align: center;
@@ -83,13 +83,13 @@ h1 {
 }
 
 .info-panel, .upload-container, .resources-panel {
-    background: rgba(255, 255, 255, 0.9);
+    background: #effeff;
     border-radius: 20px;
     padding: 25px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(0, 0, 0, 0.2);
 }
 
 .info-panel:hover, .upload-container:hover, .resources-panel:hover {
@@ -99,7 +99,7 @@ h1 {
 
 .info-panel h2, .resources-panel h3 {
     margin-bottom: 15px;
-    color: #ff3366;
+    color: #FFD1DC;
     font-weight: 700;
     position: relative;
     display: inline-block;
@@ -112,7 +112,7 @@ h1 {
     left: 0;
     width: 50px;
     height: 3px;
-    background: linear-gradient(90deg, #ff3366, #00ffcc);
+    background: linear-gradient(90deg, #FFD1DC, #00ffcc);
     border-radius: 3px;
 }
 
@@ -184,7 +184,7 @@ h1 {
 }
 
 button, .action-button {
-    background: linear-gradient(135deg, #ff3366 0%, #ff6b6b 100%);
+    background: linear-gradient(135deg, #FFD1DC 0%, #ff6b6b 100%);
     color: white;
     border: none;
     padding: 14px 28px;
@@ -247,7 +247,7 @@ button:active, .action-button:active {
 
 .error {
     background-color: rgba(255, 232, 230, 0.9);
-    border-left: 5px solid #ff3366;
+    border-left: 5px solid #FFD1DC;
     color: #cc0033;
 }
 
@@ -276,7 +276,7 @@ button:active, .action-button:active {
 }
 
 .helpline strong {
-    color: #ff3366;
+    color: #FFD1DC;
     font-size: 1.2em;
     letter-spacing: 1px;
 }
@@ -303,7 +303,7 @@ footer a {
 }
 
 footer a:hover {
-    color: #ff3366;
+    color: #FFD1DC;
     text-shadow: 0 0 8px rgba(0, 255, 204, 0.6);
 }
 
@@ -322,7 +322,7 @@ footer a:hover {
 }
 
 #prompt-container h3 {
-    color: #ff3366;
+    color: #FFD1DC;
     margin-bottom: 15px;
     font-weight: 700;
 }
@@ -343,7 +343,7 @@ footer a:hover {
 
 #customPrompt:focus {
     outline: none;
-    border-color: #ff3366;
+    border-color: #FFD1DC;
     box-shadow: 0 0 12px rgba(255, 51, 102, 0.4);
     transform: translateY(-3px);
 }
